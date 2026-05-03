@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Public profile information for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Unique identifier for the user." },
+        "displayName": { "type": "string", "description": "User's public name." },
+        "highScore": { "type": "number", "description": "User's highest racing score." },
+        "totalDistance": { "type": "number", "description": "Total distance driven across all sessions." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last time the profile was updated." }
+      },
+      "required": ["userId", "displayName", "highScore", "totalDistance", "updatedAt"]
+    },
+    "LeaderboardEntry": {
+      "title": "Leaderboard Entry",
+      "description": "Specific entry for the global leaderboard.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "score": { "type": "number" },
+        "distance": { "type": "number" },
+        "achievedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userName", "score", "distance", "achievedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Stores user profiles and persistent stats."
+    },
+    "/leaderboard/{userId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Stores the best performance per user for the global leaderboard."
+    }
+  }
+}

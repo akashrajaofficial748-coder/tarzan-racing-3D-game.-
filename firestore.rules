@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    // UserProfile Validation
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['userId', 'displayName', 'highScore', 'totalDistance', 'updatedAt'])
+        && data.keys().size() == 5
+        && data.userId == request.auth.uid
+        && data.displayName is string && data.displayName.size() <= 50
+        && data.highScore is number && data.highScore >= 0
+        && data.totalDistance is number && data.totalDistance >= 0
+        && data.updatedAt == request.time;
+    }
+
+    // LeaderboardEntry Validation
+    function isValidLeaderboardEntry(data) {
+      return data.keys().hasAll(['userId', 'userName', 'score', 'distance', 'achievedAt'])
+        && data.keys().size() == 5
+        && data.userId == request.auth.uid
+        && data.userName is string && data.userName.size() <= 50
+        && data.score is number && data.score >= 0
+        && data.distance is number && data.distance >= 0
+        && data.achievedAt == request.time;
+    }
+
+    // --- Collections ---
+
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid; // Secure list
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming()) 
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'highScore', 'totalDistance', 'updatedAt']);
+    }
+
+    match /leaderboard/{userId} {
+      allow read: if true; // Public leaderboard
+      allow create: if isOwner(userId) && isValidId(userId) && isValidLeaderboardEntry(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) && isValidLeaderboardEntry(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['userName', 'score', 'distance', 'achievedAt']);
+      allow delete: if isOwner(userId);
+    }
+  }
+}
